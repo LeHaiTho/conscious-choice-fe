@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCcw, Search, Eye, AlertCircle, CheckCircle2, XCircle, User, Edit, Building2, Shield } from "lucide-react";
+import { RefreshCcw, Search, Eye, AlertCircle, CheckCircle2, XCircle, Edit, Building2, Shield } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { BrandForm, BrandMoralForm } from "../brands/BrandsPage";
 import { ProductForm } from "../products/ProductsPage";
