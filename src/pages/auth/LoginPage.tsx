@@ -67,7 +67,7 @@ export default function LoginPage() {
             <Leaf className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Conscious Choice
+            My Little Olive
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Hệ thống quản trị nội dung
@@ -95,7 +95,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@consciousc.app"
+                  placeholder="admin@mylittleolive.app"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -146,7 +146,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6 animate-in fade-in duration-1000 delay-500">
-          &copy; 2025 Conscious Choice. Hệ thống quản trị nội bộ.
+          &copy; 2025 My Little Olive. Hệ thống quản trị nội bộ.
         </p>
       </div>
     </div>

@@ -44,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
         }),
     }),
     {
-      name: "conscious-choice-auth",
+      name: "my-little-olive-auth",
     }
   )
 );

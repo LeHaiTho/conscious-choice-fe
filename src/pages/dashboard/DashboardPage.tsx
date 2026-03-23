@@ -78,7 +78,7 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Tổng quan hệ thống quản trị Conscious Choice
+          Tổng quan hệ thống quản trị My Little Olive
         </p>
       </div>
 
