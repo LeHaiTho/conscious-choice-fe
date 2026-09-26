@@ -103,6 +103,33 @@ function NewsForm({
     is_pinned: row?.is_pinned ?? false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file ảnh");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage
+        .from("news-images")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (error) throw error;
+      const { data } = supabase.storage.from("news-images").getPublicUrl(path);
+      setFormData((f) => ({ ...f, image_url: data.publicUrl }));
+      toast.success("Đã tải ảnh lên");
+    } catch (err: any) {
+      toast.error(`Lỗi tải ảnh: ${err.message}`);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,14 +188,35 @@ function NewsForm({
       </div>
 
       <div className="space-y-2">
-        <Label>Link ảnh (tùy chọn)</Label>
+        <Label>Ảnh (tùy chọn)</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            type="file"
+            accept="image/*"
+            onChange={handleUpload}
+            disabled={uploading}
+            className="cursor-pointer"
+          />
+          {uploading ? <span className="text-sm text-muted-foreground whitespace-nowrap">Đang tải…</span> : null}
+        </div>
         <Input
           value={formData.image_url}
           onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-          placeholder="https://..."
+          placeholder="Hoặc dán link ảnh: https://..."
         />
         {formData.image_url ? (
-          <img src={formData.image_url} alt="" className="mt-2 w-full max-h-48 rounded-lg object-cover border" />
+          <div className="relative mt-2">
+            <img src={formData.image_url} alt="" className="w-full max-h-48 rounded-lg object-cover border" />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="absolute top-2 right-2"
+              onClick={() => setFormData({ ...formData, image_url: "" })}
+            >
+              Xoá ảnh
+            </Button>
+          </div>
         ) : null}
       </div>
 
