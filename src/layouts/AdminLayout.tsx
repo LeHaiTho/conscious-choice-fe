@@ -50,6 +50,7 @@ import {
   Users,
   Newspaper,
   History,
+  Megaphone,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -68,6 +69,7 @@ const dataNavItems = [
 
 const operationsNavItems = [
   { title: "Tin tức", url: "/admin/news", icon: Newspaper },
+  { title: "Banner nhắc nhở", url: "/admin/banners", icon: Megaphone },
   { title: "Thay đổi cộng đồng", url: "/admin/community", icon: History },
   { title: "Reports", url: "/admin/reports", icon: FileWarning },
   { title: "Users", url: "/admin/users", icon: Users },
@@ -82,6 +84,9 @@ function getBreadcrumbTitle(pathname: string): string {
     "/admin/products": "Sản phẩm",
     "/admin/aliases": "Aliases",
     "/admin/classifications": "Classifications",
+    "/admin/news": "Tin tức",
+    "/admin/banners": "Banner nhắc nhở",
+    "/admin/community": "Thay đổi cộng đồng",
     "/admin/reports": "Reports",
     "/admin/users": "Users",
   };
