@@ -10,6 +10,7 @@ import AliasesPage from "@/pages/aliases/AliasesPage";
 import ReportsPage from "@/pages/reports/ReportsPage";
 import UsersPage from "@/pages/users/UsersPage";
 import ClassificationsPage from "@/pages/classifications/ClassificationsPage";
+import NewsPage from "@/pages/news/NewsPage";
 
 export const router = createBrowserRouter([
   {
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { path: "products", element: <ProductsPage /> },
       { path: "aliases", element: <AliasesPage /> },
       { path: "classifications", element: <ClassificationsPage /> },
+      { path: "news", element: <NewsPage /> },
       { path: "reports", element: <ReportsPage /> },
       { path: "users", element: <UsersPage /> },
     ],

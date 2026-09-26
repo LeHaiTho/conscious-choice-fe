@@ -1,0 +1,253 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+import { DataTablePage, type Column } from "@/components/shared/DataTablePage";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { usePagination } from "@/hooks/use-pagination";
+
+interface NewsRow {
+  id: string;
+  title: string | null;
+  content: string;
+  image_url: string | null;
+  facebook_url: string | null;
+  is_published: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+const columns: Column<NewsRow>[] = [
+  {
+    key: "image_url",
+    title: "Ảnh",
+    render: (val) =>
+      val ? (
+        <img src={String(val)} alt="" className="w-14 h-14 rounded-lg object-cover border" />
+      ) : (
+        <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs">—</div>
+      ),
+  },
+  {
+    key: "title",
+    title: "Bài viết",
+    render: (val, row) => (
+      <div className="max-w-md">
+        {val ? <div className="font-semibold line-clamp-1">{String(val)}</div> : null}
+        <div className="text-sm text-muted-foreground line-clamp-2">{row.content}</div>
+      </div>
+    ),
+  },
+  {
+    key: "is_published",
+    title: "Trạng thái",
+    render: (val) => (
+      <Badge
+        variant={val ? "default" : "secondary"}
+        className={val ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : ""}
+      >
+        {val ? "Hiển thị" : "Ẩn"}
+      </Badge>
+    ),
+  },
+  {
+    key: "created_at",
+    title: "Ngày đăng",
+    render: (val) => (
+      <span className="text-sm text-muted-foreground">
+        {val ? new Date(String(val)).toLocaleDateString("vi-VN") : "—"}
+      </span>
+    ),
+  },
+];
+
+function NewsForm({
+  row,
+  onClose,
+  onSuccess,
+}: {
+  row: NewsRow | null;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [formData, setFormData] = useState({
+    title: row?.title || "",
+    content: row?.content || "",
+    image_url: row?.image_url || "",
+    facebook_url: row?.facebook_url || "",
+    is_published: row?.is_published ?? true,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.content.trim()) {
+      toast.error("Vui lòng nhập nội dung bài viết");
+      return;
+    }
+    setIsSubmitting(true);
+    const payload = {
+      title: formData.title.trim() || null,
+      content: formData.content.trim(),
+      image_url: formData.image_url.trim() || null,
+      facebook_url: formData.facebook_url.trim() || null,
+      is_published: formData.is_published,
+    };
+    try {
+      if (row) {
+        const { error } = await supabase.from("news").update(payload).eq("id", row.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("news").insert(payload);
+        if (error) throw error;
+      }
+      toast.success(row ? "Cập nhật thành công" : "Đăng bài thành công");
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      toast.error(`Lỗi: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Tiêu đề (tùy chọn)</Label>
+        <Input
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          placeholder="VD: Global Strike for Gaza — Thứ 5 hàng tuần"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Nội dung *</Label>
+        <Textarea
+          value={formData.content}
+          onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+          placeholder="Nội dung bài viết..."
+          rows={6}
+          required
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Link ảnh (tùy chọn)</Label>
+        <Input
+          value={formData.image_url}
+          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+          placeholder="https://..."
+        />
+        {formData.image_url ? (
+          <img src={formData.image_url} alt="" className="mt-2 w-full max-h-48 rounded-lg object-cover border" />
+        ) : null}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Link Facebook gốc (tùy chọn)</Label>
+        <Input
+          value={formData.facebook_url}
+          onChange={(e) => setFormData({ ...formData, facebook_url: e.target.value })}
+          placeholder="https://facebook.com/..."
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="is_published"
+          checked={formData.is_published}
+          onCheckedChange={(v) => setFormData({ ...formData, is_published: Boolean(v) })}
+        />
+        <Label htmlFor="is_published" className="cursor-pointer">
+          Hiển thị bài viết trong app
+        </Label>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-4">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Huỷ
+        </Button>
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+        >
+          {isSubmitting ? "Đang lưu..." : row ? "Cập nhật" : "Đăng bài"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export default function NewsPage() {
+  const [items, setItems] = useState<NewsRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const { page, pageSize, total, setTotal, onPageChange, range } = usePagination();
+
+  const fetchItems = async () => {
+    setIsLoading(true);
+    try {
+      let query = supabase.from("news").select("*", { count: "exact" }).eq("is_deleted", false);
+
+      if (search) {
+        query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
+      }
+
+      const { data, error, count } = await query
+        .order("created_at", { ascending: false })
+        .range(range.from, range.to);
+
+      if (error) throw error;
+      setItems(data as NewsRow[]);
+      setTotal(count || 0);
+    } catch (error: any) {
+      toast.error(`Lỗi: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, [range, search]);
+
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase.from("news").update({ is_deleted: true }).eq("id", id);
+      if (error) throw error;
+      toast.success("Đã xoá bài viết");
+      fetchItems();
+    } catch (error: any) {
+      toast.error(`Lỗi: ${error.message}`);
+    }
+  };
+
+  return (
+    <DataTablePage
+      title="Tin tức"
+      description="Quản lý bài viết hiển thị trong app"
+      columns={columns}
+      data={items}
+      isLoading={isLoading}
+      getRowId={(r) => r.id}
+      searchPlaceholder="Tìm bài viết..."
+      addLabel="Đăng bài"
+      total={total}
+      page={page}
+      pageSize={pageSize}
+      onPageChange={onPageChange}
+      onSearch={setSearch}
+      onRefresh={fetchItems}
+      renderForm={(row, onClose) => <NewsForm row={row} onClose={onClose} onSuccess={fetchItems} />}
+      onDelete={(row) => handleDelete(row.id)}
+    />
+  );
+}
