@@ -49,6 +49,7 @@ import {
   Shield,
   Users,
   Newspaper,
+  History,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -67,6 +68,7 @@ const dataNavItems = [
 
 const operationsNavItems = [
   { title: "Tin tức", url: "/admin/news", icon: Newspaper },
+  { title: "Thay đổi cộng đồng", url: "/admin/community", icon: History },
   { title: "Reports", url: "/admin/reports", icon: FileWarning },
   { title: "Users", url: "/admin/users", icon: Users },
 ];
