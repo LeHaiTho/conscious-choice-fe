@@ -461,13 +461,49 @@ export default function NewsPage() {
     }
   };
 
+  const togglePublish = async (row: NewsRow) => {
+    try {
+      const { error } = await supabase
+        .from("news")
+        .update({ is_published: !row.is_published })
+        .eq("id", row.id);
+      if (error) throw error;
+      toast.success(row.is_published ? "Đã gỡ bài (ẩn khỏi app)" : "Đã đăng lại bài");
+      fetchItems();
+    } catch (error: any) {
+      toast.error(`Lỗi: ${error.message}`);
+    }
+  };
+
+  const columnsWithToggle: Column<NewsRow>[] = [
+    ...columns,
+    {
+      key: "_toggle",
+      title: "",
+      render: (_v, row) => (
+        <Button
+          size="sm"
+          variant="outline"
+          className={
+            row.is_published
+              ? "text-amber-600 hover:text-amber-700"
+              : "text-emerald-600 hover:text-emerald-700"
+          }
+          onClick={() => togglePublish(row)}
+        >
+          {row.is_published ? "Gỡ bài" : "Đăng lại"}
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <FooterSettingCard />
       <DataTablePage
         title="Tin tức"
         description="Quản lý bài viết hiển thị trong app"
-        columns={columns}
+        columns={columnsWithToggle}
         data={items}
         isLoading={isLoading}
         getRowId={(r) => r.id}
