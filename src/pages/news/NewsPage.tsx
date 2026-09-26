@@ -18,6 +18,7 @@ interface NewsRow {
   title: string | null;
   content: string;
   image_url: string | null;
+  images: string[] | null;
   facebook_url: string | null;
   category: string | null;
   is_pinned: boolean;
@@ -25,6 +26,16 @@ interface NewsRow {
   is_deleted: boolean;
   created_at: string;
   updated_at?: string;
+}
+
+async function uploadToStorage(file: File): Promise<string> {
+  const ext = file.name.split(".").pop() || "jpg";
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage
+    .from("news-images")
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  return supabase.storage.from("news-images").getPublicUrl(path).data.publicUrl;
 }
 
 const columns: Column<NewsRow>[] = [
@@ -97,6 +108,7 @@ function NewsForm({
     title: row?.title || "",
     content: row?.content || "",
     image_url: row?.image_url || "",
+    images: (Array.isArray(row?.images) ? row?.images : []) as string[],
     facebook_url: row?.facebook_url || "",
     category: row?.category || "",
     is_published: row?.is_published ?? true,
@@ -104,6 +116,7 @@ function NewsForm({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -114,21 +127,39 @@ function NewsForm({
     }
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error } = await supabase.storage
-        .from("news-images")
-        .upload(path, file, { contentType: file.type, upsert: false });
-      if (error) throw error;
-      const { data } = supabase.storage.from("news-images").getPublicUrl(path);
-      setFormData((f) => ({ ...f, image_url: data.publicUrl }));
-      toast.success("Đã tải ảnh lên");
+      const url = await uploadToStorage(file);
+      setFormData((f) => ({ ...f, image_url: url }));
+      toast.success("Đã tải ảnh thumbnail");
     } catch (err: any) {
       toast.error(`Lỗi tải ảnh: ${err.message}`);
     } finally {
       setUploading(false);
       e.target.value = "";
     }
+  };
+
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploadingGallery(true);
+    try {
+      const urls: string[] = [];
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) continue;
+        urls.push(await uploadToStorage(file));
+      }
+      setFormData((f) => ({ ...f, images: [...f.images, ...urls] }));
+      toast.success(`Đã tải ${urls.length} ảnh`);
+    } catch (err: any) {
+      toast.error(`Lỗi tải ảnh: ${err.message}`);
+    } finally {
+      setUploadingGallery(false);
+      e.target.value = "";
+    }
+  };
+
+  const removeGalleryImage = (idx: number) => {
+    setFormData((f) => ({ ...f, images: f.images.filter((_, i) => i !== idx) }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -142,6 +173,7 @@ function NewsForm({
       title: formData.title.trim() || null,
       content: formData.content.trim(),
       image_url: formData.image_url.trim() || null,
+      images: formData.images,
       facebook_url: formData.facebook_url.trim() || null,
       category: formData.category || null,
       is_published: formData.is_published,
@@ -181,14 +213,15 @@ function NewsForm({
         <Textarea
           value={formData.content}
           onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-          placeholder="Nội dung bài viết..."
-          rows={6}
+          placeholder="Viết nội dung bài viết ở đây… (thoải mái, xuống dòng được giữ nguyên)"
+          rows={12}
+          className="min-h-[220px]"
           required
         />
       </div>
 
       <div className="space-y-2">
-        <Label>Ảnh (tùy chọn)</Label>
+        <Label>Ảnh thumbnail / bìa (hiển thị ngoài danh sách)</Label>
         <div className="flex items-center gap-2">
           <Input
             type="file"
@@ -205,8 +238,8 @@ function NewsForm({
           placeholder="Hoặc dán link ảnh: https://..."
         />
         {formData.image_url ? (
-          <div className="relative mt-2">
-            <img src={formData.image_url} alt="" className="w-full max-h-48 rounded-lg object-cover border" />
+          <div className="relative mt-2 w-fit">
+            <img src={formData.image_url} alt="" className="max-h-40 rounded-lg object-cover border" />
             <Button
               type="button"
               variant="secondary"
@@ -214,10 +247,44 @@ function NewsForm({
               className="absolute top-2 right-2"
               onClick={() => setFormData({ ...formData, image_url: "" })}
             >
-              Xoá ảnh
+              Xoá
             </Button>
           </div>
         ) : null}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Ảnh đính kèm (gallery — hiển thị dưới nội dung, kiểu Facebook)</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleGalleryUpload}
+            disabled={uploadingGallery}
+            className="cursor-pointer"
+          />
+          {uploadingGallery ? <span className="text-sm text-muted-foreground whitespace-nowrap">Đang tải…</span> : null}
+        </div>
+        {formData.images.length > 0 ? (
+          <div className="grid grid-cols-4 gap-2 mt-2">
+            {formData.images.map((url, i) => (
+              <div key={i} className="relative aspect-square">
+                <img src={url} alt="" className="w-full h-full rounded-lg object-cover border" />
+                <button
+                  type="button"
+                  onClick={() => removeGalleryImage(i)}
+                  className="absolute -top-1.5 -right-1.5 bg-destructive text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none shadow"
+                  title="Xoá ảnh"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Chọn nhiều ảnh cùng lúc để đính kèm vào bài.</p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -286,6 +353,69 @@ function NewsForm({
   );
 }
 
+function FooterSettingCard() {
+  const [footer, setFooter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("app_settings")
+          .select("value")
+          .eq("key", "news_footer")
+          .single();
+        setFooter(data?.value || "");
+      } catch {
+        /* ignore */
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("app_settings")
+        .upsert({ key: "news_footer", value: footer, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      toast.success("Đã lưu footer chung");
+    } catch (error: any) {
+      toast.error(`Lỗi: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div>
+        <h2 className="font-semibold">Footer chung (tự thêm vào cuối mọi bài)</h2>
+        <p className="text-sm text-muted-foreground">Thông tin liên hệ hiển thị ở cuối mỗi bài viết trong app.</p>
+      </div>
+      <Textarea
+        value={footer}
+        onChange={(e) => setFooter(e.target.value)}
+        rows={4}
+        disabled={loading}
+        placeholder={"Mọi thông tin xin liên hệ:\nGmail: ...\nFacebook: ..."}
+      />
+      <div className="flex justify-end">
+        <Button
+          onClick={save}
+          disabled={saving || loading}
+          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+        >
+          {saving ? "Đang lưu..." : "Lưu footer"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function NewsPage() {
   const [items, setItems] = useState<NewsRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -332,23 +462,27 @@ export default function NewsPage() {
   };
 
   return (
-    <DataTablePage
-      title="Tin tức"
-      description="Quản lý bài viết hiển thị trong app"
-      columns={columns}
-      data={items}
-      isLoading={isLoading}
-      getRowId={(r) => r.id}
-      searchPlaceholder="Tìm bài viết..."
-      addLabel="Đăng bài"
-      total={total}
-      page={page}
-      pageSize={pageSize}
-      onPageChange={onPageChange}
-      onSearch={setSearch}
-      onRefresh={fetchItems}
-      renderForm={(row, onClose) => <NewsForm row={row} onClose={onClose} onSuccess={fetchItems} />}
-      onDelete={(row) => handleDelete(row.id)}
-    />
+    <div className="space-y-6">
+      <FooterSettingCard />
+      <DataTablePage
+        title="Tin tức"
+        description="Quản lý bài viết hiển thị trong app"
+        columns={columns}
+        data={items}
+        isLoading={isLoading}
+        getRowId={(r) => r.id}
+        searchPlaceholder="Tìm bài viết..."
+        addLabel="Đăng bài"
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        onSearch={setSearch}
+        onRefresh={fetchItems}
+        formDialogClassName="sm:max-w-2xl"
+        renderForm={(row, onClose) => <NewsForm row={row} onClose={onClose} onSuccess={fetchItems} />}
+        onDelete={(row) => handleDelete(row.id)}
+      />
+    </div>
   );
 }

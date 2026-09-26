@@ -67,6 +67,8 @@ interface DataTablePageProps<T> {
   pageSize?: number;
   total?: number;
   onPageChange?: (page: number) => void;
+  /** Class cho DialogContent của form (mặc định hẹp; truyền rộng hơn cho form nhiều nội dung) */
+  formDialogClassName?: string;
 }
 
 export function DataTablePage<T>({
@@ -88,6 +90,7 @@ export function DataTablePage<T>({
   pageSize = 10,
   total = 0,
   onPageChange,
+  formDialogClassName = "sm:max-w-lg",
 }: DataTablePageProps<T>) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -152,7 +155,7 @@ export function DataTablePage<T>({
                 {addLabel}
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className={`${formDialogClassName} max-h-[90vh] overflow-y-auto`}>
               <DialogHeader>
                 <DialogTitle>
                   {editingRow ? "Chỉnh sửa" : "Thêm mới"} {title.toLowerCase()}
