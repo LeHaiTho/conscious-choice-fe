@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePagination } from "@/hooks/use-pagination";
+
+const NEWS_CATEGORIES = ["Thông báo", "Tẩy chay", "Hàng Việt", "Sự kiện", "Mẹo tiêu dùng", "Khác"];
 
 interface NewsRow {
   id: string;
@@ -16,6 +19,8 @@ interface NewsRow {
   content: string;
   image_url: string | null;
   facebook_url: string | null;
+  category: string | null;
+  is_pinned: boolean;
   is_published: boolean;
   is_deleted: boolean;
   created_at: string;
@@ -38,10 +43,23 @@ const columns: Column<NewsRow>[] = [
     title: "Bài viết",
     render: (val, row) => (
       <div className="max-w-md">
-        {val ? <div className="font-semibold line-clamp-1">{String(val)}</div> : null}
+        <div className="flex items-center gap-1.5">
+          {row.is_pinned ? <span title="Đã ghim">📌</span> : null}
+          {val ? <div className="font-semibold line-clamp-1">{String(val)}</div> : null}
+        </div>
         <div className="text-sm text-muted-foreground line-clamp-2">{row.content}</div>
       </div>
     ),
+  },
+  {
+    key: "category",
+    title: "Danh mục",
+    render: (val) =>
+      val ? (
+        <Badge variant="outline">{String(val)}</Badge>
+      ) : (
+        <span className="text-muted-foreground text-sm">—</span>
+      ),
   },
   {
     key: "is_published",
@@ -80,7 +98,9 @@ function NewsForm({
     content: row?.content || "",
     image_url: row?.image_url || "",
     facebook_url: row?.facebook_url || "",
+    category: row?.category || "",
     is_published: row?.is_published ?? true,
+    is_pinned: row?.is_pinned ?? false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -96,7 +116,9 @@ function NewsForm({
       content: formData.content.trim(),
       image_url: formData.image_url.trim() || null,
       facebook_url: formData.facebook_url.trim() || null,
+      category: formData.category || null,
       is_published: formData.is_published,
+      is_pinned: formData.is_pinned,
     };
     try {
       if (row) {
@@ -159,6 +181,25 @@ function NewsForm({
         />
       </div>
 
+      <div className="space-y-2">
+        <Label>Danh mục</Label>
+        <Select
+          value={formData.category || undefined}
+          onValueChange={(v) => setFormData({ ...formData, category: v })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Chọn danh mục (tùy chọn)" />
+          </SelectTrigger>
+          <SelectContent>
+            {NEWS_CATEGORIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="flex items-center gap-2">
         <Checkbox
           id="is_published"
@@ -167,6 +208,17 @@ function NewsForm({
         />
         <Label htmlFor="is_published" className="cursor-pointer">
           Hiển thị bài viết trong app
+        </Label>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="is_pinned"
+          checked={formData.is_pinned}
+          onCheckedChange={(v) => setFormData({ ...formData, is_pinned: Boolean(v) })}
+        />
+        <Label htmlFor="is_pinned" className="cursor-pointer">
+          📌 Ghim bài (hiện lên đầu)
         </Label>
       </div>
 
@@ -202,6 +254,7 @@ export default function NewsPage() {
       }
 
       const { data, error, count } = await query
+        .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false })
         .range(range.from, range.to);
 
